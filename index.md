@@ -21,11 +21,11 @@ CTINexus is a novel framework designed to enhance cybersecurity knowledge extrac
 ![](assets/images/overview-cap.png)
 
 ## Components
-- **Information Extraction (IE)**: Extracts triplets based on the applied ontology. 
-- **Knowledge Graph Construction (KGC)**:
-  - **Entity Typing (ET)**: Tags entities with corresponding types.
-  - **Entity Merging (EM)**: Merges entities of the same type with high semantic similarity.
-  - **Link Prediction (LP)**: Links distantly related entities according to context.
+- [Information Extraction (IE)]({{site.baseurl}}/docs/ie/): Extracts triplets based on the applied ontology. 
+- [Knowledge Graph Construction (KGC)]({{site.baseurl}}/docs/kgc/):
+  - [Entity Typing (ET)]({{site.baseurl}}/docs/kgc/et): Tags entities with corresponding types.
+  - [Entity Merging (EM)]({{site.baseurl}}/docs/kgc/em): Merges entities of the same type with high semantic similarity.
+  - [Link Prediction (LP)]({{site.baseurl}}/docs/kgc/lp): Links distantly related entities according to context.
 
 <!-- [Get started now](#getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View it on GitHub][Just the Docs repo]{: .btn .fs-5 .mb-4 .mb-md-0 } -->
