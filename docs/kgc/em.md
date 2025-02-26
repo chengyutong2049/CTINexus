@@ -10,7 +10,7 @@ nav_order: 2
 The EM module processes CTI reports to identify and merge similar entities within extracted triplets. It uses embeddings to measure similarity and clusters entities that are semantically similar. This process helps in reducing redundancy and improving the quality of the extracted knowledge.
 {: .fs-5 .fw-300 }
 
-![](../../../assets/images/em-cap.png)
+![](../../../assets/images/em.png)
 
 ## Table of contents
 {: .no_toc .text-delta }
