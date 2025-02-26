@@ -10,6 +10,8 @@ nav_order: 1
 The ET module enhances triplets (subject-predicate-object structures) extracted by the Information Extraction (IE) module by assigning specific semantic types to entities.
 {: .fs-5 .fw-300 }
 
+![](../../../assets/images/et-cap.png)
+
 ## Table of contents
 {: .no_toc .text-delta }
 

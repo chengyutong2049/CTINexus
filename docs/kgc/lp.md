@@ -9,6 +9,8 @@ nav_order: 3
 The LP module processes CTI reports to predict and establish links between entities within extracted triplets. It leverages LLMs to infer relationships, thereby improving the quality and utility of the extracted knowledge.
 {: .fs-5 .fw-300 }
 
+![](../../../assets/images/lp-cap.png)
+
 ## Table of contents
 {: .no_toc .text-delta }
 

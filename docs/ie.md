@@ -9,12 +9,13 @@ nav_order: 2
 The IE module automatically processes unstructured CTI reports and extracts structured information in the form of triplets (subject-predicate-object). It uses demonstration-based learning to improve extraction accuracy and incorporates multiple LLM backends.
 {: .fs-5 .fw-300 }
 
+![](../../assets/images/ie-cap.png)
+
 ## Table of contents
 {: .no_toc .text-delta }
 
 1. TOC
 {:toc}
-
 ---
 ## Architecture
 

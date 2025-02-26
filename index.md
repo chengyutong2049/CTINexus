@@ -18,7 +18,7 @@ CTINexus is a novel framework designed to enhance cybersecurity knowledge extrac
 
 
 
-![](assets/images/overview.png)
+![](assets/images/overview-cap.png)
 
 ## Components
 - **Information Extraction (IE)**: Extracts triplets based on the applied ontology. 
