@@ -80,7 +80,7 @@ The dataset follows a JSON structure that captures the progressive enrichment of
 }
 ```
 
-### Applications
+## Features
 This dataset enables researchers and practitioners to:
 
 * Evaluate end-to-end Cyber Security Knowledge Graph (CSKG) construction systems 🚀
