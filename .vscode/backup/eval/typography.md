@@ -1,6 +1,7 @@
 ---
 title: Typography
-parent: Utilities
+parent: Experiments
+nav_order: 4
 ---
 
 # Typography Utilities

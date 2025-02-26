@@ -5,3 +5,7 @@ update:
 	git add .
 	git commit -m "update"
 	git push
+
+
+local:
+	bundle exec jekyll serve

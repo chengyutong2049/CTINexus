@@ -1,6 +1,7 @@
 ---
 title: Responsive Modifiers
-parent: Utilities
+parent: Experiments
+nav_order: 3
 ---
 
 # Responsive modifiers

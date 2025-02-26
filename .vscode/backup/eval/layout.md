@@ -1,6 +1,7 @@
 ---
 title: Layout
-parent: Utilities
+parent: Experiments
+nav_order: 2
 ---
 
 # Layout Utilities
