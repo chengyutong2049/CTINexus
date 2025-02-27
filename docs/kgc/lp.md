@@ -226,7 +226,7 @@ Calculates and tracks token usage and associated costs by reading pricing data f
 
 ```python
 def calculate(self):
-    with open ("Toolbox/menu/menu.json", "r") as f:
+    with open (model_price_menu, "r") as f:
         data = json.load(f)
     iprice = data[self.model]["input"]
     oprice = data[self.model]["output"]
@@ -252,25 +252,17 @@ def calculate(self):
 The module uses [Hydra] for configuration management. Key parameters in `example.yaml`:
 ```yaml
 # Input/Output paths
-inSet: /home/yutong/CTINexus/dataset/Merger-output-large-GT  # Input directory for processed entity files
-outSet: /home/yutong/CTINexus/dataset/Linker-outputs-GT  # Output directory for link prediction results
-
-# Specific files to process (optional)
-addition:
-  darkreading:
-    - Bluetooth-Flaw.json
-  securityweek:
-    - wallescape.json
-  # ...additional sources and files...
+inSet: <*>               # Input directory for processed entity files
+outSet: <*>              # Output directory for link prediction results
 
 # OpenAI settings
-model: gpt-4-0125-preview  # LLM model to use
-api_key: sk-***  # API key (recommend using environment variables)
+model: <*>               # LLM model to use
+api_key: <*>             # API key (recommend using environment variables)
 
 # Prompt settings
-link_prompt_folder: Toolbox/LinkerPrompt  # Directory with templates
-link_prompt_file: GT.jinja  # Template file to use
-link_prompt_set: /path/to/prompt_store  # Where to save prompts
+link_prompt_folder: <*>  # Directory with templates
+link_prompt_file: <*>    # Template file to use
+link_prompt_set: <*>     # Where to save prompts
 ```
 
 ## Usage Instructions
@@ -300,7 +292,8 @@ The module expects files containing preprocessed triplets with entity IDs:
         "subject": {"entity_id": 2, "mention_text": "Zebrocy", "mention_class": "MALWARE"},
         "predicate": "targets",
         "object": {"entity_id": 3, "mention_text": "government entities", "mention_class": "ORGANIZATION"}
-      }
+      },
+      ...
     ]
   }
 }
@@ -322,39 +315,33 @@ The module enhances the input files by adding predicted links:
         "subject": {"entity_id": 2, "mention_text": "Zebrocy"},
         "relation": "targets",
         "object": {"entity_id": 3, "mention_text": "government entities"}
-      }
+      },
+      ...
     ],
-    "response_time": 2.35,
-    "model": "gpt-4-0125-preview",
+    "response_time": ...,
     "usage": {
-      "input": {
-        "tokens": 1024,
-        "cost": 0.01
-      },
-      "output": {
-        "tokens": 512,
-        "cost": 0.03
-      },
-      "total": {
-        "tokens": 1536,
-        "cost": 0.04
-      }
+      "model": "...",
+      "input": {"tokens": ..., "cost": ...},
+      "output": {"tokens": ..., "cost": ...},
+      "total": {"tokens": ..., "cost": ...}
     },
+    "model": "...",
     "topic_node": {
-      "entity_id": 0,
-      "entity_text": "APT28"
+      "entity_id": ...,
+      "entity_text": "..."
     },
     "main_nodes": [
       {
-        "entity_id": 1,
-        "entity_text": "Zebrocy"
+        "entity_id": ...,
+        "entity_text": "..."
       }
     ],
     "subgraphs": [
-      [0, 1],
-      [2, 3]
+      [0, 1, ...],
+      [2, 3, ...],
+      ...
     ],
-    "subgraph_num": 2
+    "subgraph_num": ...
   }
 }
 ```
