@@ -37,12 +37,6 @@ LP/
 
 The entry point that orchestrates the link prediction process:
 ```python
-import os 
-import json
-import hydra
-from omegaconf import DictConfig, OmegaConf
-from Linker import Linker
-
 @hydra.main(config_path="config", config_name="example", version_base="1.2")
 def run(config: DictConfig):
     annotated_CTI_Sources = os.listdir(config.outSet)
@@ -52,158 +46,112 @@ def run(config: DictConfig):
         FolderPath = os.path.join(config.inSet, CTI_Source)
         for JSONFile in os.listdir(FolderPath):
             Linker(config, CTI_Source, JSONFile)
-
-if __name__ == "__main__":
-    run()
 ``` 
+
 
 ### Linker (`Linker.py`)
 The `Linker` class handles the complete link prediction workflow:
-1. Input Processing:
+1. Graph Construction:
+Builds an [adjacency list](https://en.wikipedia.org/wiki/Adjacency_list) representation of the knowledge graph. Each entity becomes a node, and each triplet establishes an undirected edge between subject and object entities. This structure enables efficient graph traversal and component analysis.
 ```python
-def __init__(self, config: DictConfig, CTI_Source, inFile):
-    self.config = config
-    self.CTI_Source = CTI_Source
-    self.inFile = inFile
-
-    infile_path = os.path.join(self.config.inSet, self.CTI_Source, self.inFile)
-    with open(infile_path, 'r') as f:
-        self.js = json.load(f)
-        self.aligned_triplets = self.js["EA"]["aligned_triplets"]
-
-    self.graph = {}
-    self.build_graph()
-    self.subgraphs = self.find_disconnected_subgraphs()
-    self.main_nodes = self.find_main_nodes()
-    self.topic_node = self.get_topic_node(self.subgraphs)
-    self.main_nodes = [node for node in self.main_nodes if node["entity_id"] != self.topic_node["entity_id"]]
-    self.js["LP"] = LLMLinker(self).link()
-    self.js["LP"]["topic_node"] = self.topic_node
-    self.js["LP"]["main_nodes"] = self.main_nodes
-    self.js["LP"]["subgraphs"] = [list(subgraph) for subgraph in self.subgraphs]
-    self.js["LP"]["subgraph_num"] = len(self.subgraphs)
+# Fill the graph structure with entity connections
+for triplet in self.aligned_triplets:
+    subject_entity_id = triplet["subject"]["entity_id"]
+    object_entity_id = triplet["object"]["entity_id"]
     
-    outfolder = os.path.join(self.config.outSet, self.CTI_Source)
-    os.makedirs(outfolder, exist_ok=True)
-    outfile_path = os.path.join(outfolder, self.inFile)
-
-    with open(outfile_path, 'w') as f:
-        json.dump(self.js, f, indent=4)
+    if subject_entity_id not in self.graph:
+        self.graph[subject_entity_id] = []
+    if object_entity_id not in self.graph:
+        self.graph[object_entity_id] = []
+    
+    # Add undirected edges
+    self.graph[subject_entity_id].append(object_entity_id)
+    self.graph[object_entity_id].append(subject_entity_id)
 ```
 
-2. Graph Construction:
+2. Disconnected Subgraph Identification:
+Uses [depth-first search (DFS)](https://en.wikipedia.org/wiki/Depth-first_search) to identify disconnected components in the knowledge graph. For each unvisited node, it starts a new DFS traversal to collect all connected nodes into a subgraph. This allows the system to identify isolated knowledge clusters that require connecting.
 ```python
-def build_graph(self):
+def find_disconnected_subgraphs(self):
+    self.visited = set()
+    subgraphs = []
+
+    for start_node in self.graph.keys():
+        if start_node not in self.visited:
+            # For each new subgraph found, collect its nodes
+            current_subgraph = set()
+            self.dfs_collect(start_node, current_subgraph)
+            subgraphs.append(current_subgraph)
+
+    return subgraphs
+```
+
+3. Main Node Identification:
+Identifies the central entity within each subgraph by calculating [node degrees](https://en.wikipedia.org/wiki/Degree_(graph_theory)) (number of connections). The entity with the highest degree is considered the main node of the subgraph, representing its most central concept.
+```python
+def get_main_node(self, subgraph):
+    # Count node degrees
+    outdegrees = defaultdict(int)
+    self.directed_graph = {}
+    
+    # Build directed graph
     for triplet in self.aligned_triplets:
         subject_entity_id = triplet["subject"]["entity_id"]
         object_entity_id = triplet["object"]["entity_id"]
+        if subject_entity_id not in self.directed_graph:
+            self.directed_graph[subject_entity_id] = []
+        self.directed_graph[subject_entity_id].append(object_entity_id)
+        outdegrees[subject_entity_id] += 1
+        outdegrees[object_entity_id] += 1
         
-        if subject_entity_id not in self.graph:
-            self.graph[subject_entity_id] = []
-        if object_entity_id not in self.graph:
-            self.graph[object_entity_id] = []
-        
-        self.graph[subject_entity_id].append(object_entity_id)
-        self.graph[object_entity_id].append(subject_entity_id)
+    # Find the node with maximum degree
+    max_outdegree = 0
+    main_node = None
+    for node in subgraph:
+        if outdegrees[node] > max_outdegree:
+            max_outdegree = outdegrees[node]
+            main_node = node
+    return main_node
 ```
 
-3. Subgraph Identification:
+4. Topic Node Identification:
+Identifies the overall topic node of the entire knowledge graph by first determining the largest subgraph (by node count) and then finding its central entity. This approach assumes that the largest connected component contains the report's primary subject matter.
 ```python
-    def find_disconnected_subgraphs(self):
-        self.visited = set()
-        subgraphs = []
-
-        for start_node in self.graph.keys():
-            if start_node not in self.visited:
-                current_subgraph = set()
-                self.dfs_collect(start_node, current_subgraph)
-                subgraphs.append(current_subgraph)
-
-        return subgraphs
-
-    def dfs_collect(self, node, current_subgraph):
-        if node in self.visited:
-            return
-        self.visited.add(node)
-        current_subgraph.add(node)
-        for neighbour in self.graph[node]:
-            self.dfs_collect(neighbour, current_subgraph)
+def get_topic_node(self, subgraphs):
+    # The subgraph with the most nodes is considered the main subgraph
+    max_node_num = 0
+    for subgraph in subgraphs:
+        if len(subgraph) > max_node_num:
+            max_node_num = len(subgraph)
+            main_subgraph = subgraph
+    # Find the main node of the largest subgraph
+    return self.get_node(self.get_main_node(main_subgraph))
 ```
 
-4. Main Node Identification:
-```python
-    def find_main_nodes(self):
-        main_nodes = []
-        for subgraph in self.subgraphs:
-            main_node_entity_id = self.get_main_node(subgraph)
-            main_node = self.get_node(main_node_entity_id)
-            main_nodes.append(main_node)
-        return main_nodes
-
-    def get_main_node(self, subgraph):
-        outdegrees = defaultdict(int)
-        for triplet in self.aligned_triplets:
-            subject_entity_id = triplet["subject"]["entity_id"]
-            object_entity_id = triplet["object"]["entity_id"]
-            outdegrees[subject_entity_id] += 1
-            outdegrees[object_entity_id] += 1
-        max_outdegree = 0
-        main_node = None
-        for node in subgraph:
-            if outdegrees[node] > max_outdegree:
-                max_outdegree = outdegrees[node]
-                main_node = node
-        return main_node
-
-    def get_node(self, entity_id):
-        for triplet in self.aligned_triplets:
-            for key, node in triplet.items():
-                if key in ["subject", "object"]:
-                    if node["entity_id"] == entity_id:
-                        return node
-```
-
-5. Topic Node Identification:
-```python
-    def get_topic_node(self, subgraphs):
-        max_node_num = 0
-        for subgraph in subgraphs:
-            if len(subgraph) > max_node_num:
-                max_node_num = len(subgraph)
-                main_subgraph = subgraph
-        return self.get_node(self.get_main_node(main_subgraph))
-```
 
 ### LLM-Based Linking (`LLMLinker.py`)
 Handles the linking of entities using LLMs:
-1. Link Prediction:
+1. Link Generation Process:
+Iterates through each main node from the disconnected subgraphs and generates a prompt asking the LLM to predict a relationship between that node and the identified topic node. It then formats the response into a standardized triple format, handles potential hallucinations, and collects usage statistics.
 ```python
-    def link(self):
-        for main_node in self.main_nodes:
-            prompt = self.generate_prompt(main_node)
-            llmCaller = LLMCaller(self.config, prompt)
-            self.llm_response, self.response_time = llmCaller.call()
-            self.usage = UsageCalculator(self.llm_response).calculate()
-            self.response_content = json.loads(self.llm_response.choices[0].message.content)
-            pred_sub, pred_rel, pred_obj = self.extract_predicted_triple(self.response_content, main_node)
-            self.predicted_triple = self.construct_predicted_triple(pred_sub, pred_rel, pred_obj, main_node)
-            self.predicted_triples.append(self.predicted_triple)
-            self.response_times.append(self.response_time)
-            self.usages.append(self.usage)
-
-        return self.construct_lp_output()
-
-    def extract_predicted_triple(self, response_content, main_node):
+def link(self):
+    for main_node in self.main_nodes:
+        prompt = self.generate_prompt(main_node)
+        llmCaller = LLMCaller(self.config, prompt)
+        self.llm_response, self.response_time = llmCaller.call()
+        self.usage = UsageCalculator(self.llm_response).calculate()
+        self.response_content = json.loads(self.llm_response.choices[0].message.content)
+        
+        # Extract the predicted relationship components
         try:
-            pred_sub = response_content["predicted_triple"]['subject']
-            pred_obj = response_content["predicted_triple"]['object']
-            pred_rel = response_content["predicted_triple"]['relation']
+            pred_sub = self.response_content["predicted_triple"]['subject']
+            pred_obj = self.response_content["predicted_triple"]['object']
+            pred_rel = self.response_content["predicted_triple"]['relation']
         except:
-            values = list(response_content.values())
+            values = list(self.response_content.values())
             pred_sub, pred_rel, pred_obj = values[0], values[1], values[2]
-        return pred_sub, pred_rel, pred_obj
-
-    def construct_predicted_triple(self, pred_sub, pred_rel, pred_obj, main_node):
+            
+        # Format the predicted relationship properly
         if pred_sub == main_node["entity_text"] and pred_obj == self.topic_node["entity_text"]:
             new_sub = {"entity_id": main_node["entity_id"], "mention_text": main_node["entity_text"]}
             new_obj = self.topic_node
@@ -211,142 +159,118 @@ Handles the linking of entities using LLMs:
             new_sub = self.topic_node
             new_obj = {"entity_id": main_node["entity_id"], "mention_text": main_node["entity_text"]}
         else:
+            # Handle hallucination cases
             new_sub = {"entity_id": "hallucination", "mention_text": "hallucination"}
             new_obj = {"entity_id": "hallucination", "mention_text": "hallucination"}
-        return {"subject": new_sub, "relation": pred_rel, "object": new_obj}
 
-    def construct_lp_output(self):
-        return {
-            "predicted_links": self.predicted_triples,
-            "response_time": sum(self.response_times),
-            "model": self.config.model,
-            "usage": {
-                "input": {
-                    "tokens": sum([usage["input"]["tokens"] for usage in self.usages]),
-                    "cost": sum([usage["input"]["cost"] for usage in self.usages])
-                },
-                "output": {
-                    "tokens": sum([usage["output"]["tokens"] for usage in self.usages]),
-                    "cost": sum([usage["output"]["cost"] for usage in self.usages])
-                },
-                "total": {
-                    "tokens": sum([usage["total"]["tokens"] for usage in self.usages]),
-                    "cost": sum([usage["total"]["cost"] for usage in self.usages])
-                }
-            }
-        }
+        self.predicted_triple = {"subject": new_sub, "relation": pred_rel, "object": new_obj}
+        self.predicted_triples.append(self.predicted_triple)
+        self.response_times.append(self.response_time)
+        self.usages.append(self.usage)
+
+    return self.construct_lp_output()
 ```
 
 2. Prompt Generation:
+Generates a customized prompt for the LLM using [Jinja2] templates. It passes the main node, topic node, and original CTI text as context to help the LLM predict meaningful relationships. The prompt is also stored for future reference and debugging.
 ```python
-    def generate_prompt(self, main_node):
-        env = Environment(loader=FileSystemLoader(self.config.link_prompt_folder))
-        parsed_template = env.parse(env.loader.get_source(env, self.config.link_prompt_file)[0])
-        template = env.get_template(self.config.link_prompt_file)
-        variables = meta.find_undeclared_variables(parsed_template)
+def generate_prompt(self, main_node):
+    env = Environment(loader=FileSystemLoader(self.config.link_prompt_folder))
+    parsed_template = env.parse(env.loader.get_source(env, self.config.link_prompt_file)[0])
+    template = env.get_template(self.config.link_prompt_file)
+    variables = meta.find_undeclared_variables(parsed_template)
 
-        if variables:
-            User_prompt = template.render(main_node=main_node["entity_text"], CTI=self.js["CTI"]["text"], topic_node=self.topic_node["entity_text"])
-        else:
-            User_prompt = template.render()
-        prompt = [{"role": "user", "content": User_prompt}]
+    if variables is not {}: # if template has variables
+        User_prompt = template.render(main_node=main_node["entity_text"], 
+                                     CTI=self.js["CTI"]["text"], 
+                                     topic_node=self.topic_node["entity_text"])
+    else:
+        User_prompt = template.render()
+        
+    prompt = [{"role": "user", "content": User_prompt}]
 
-        subFolderPath = os.path.join(self.config.link_prompt_set, self.CTI_Source)
-        os.makedirs(subFolderPath, exist_ok=True)
-        with open(os.path.join(subFolderPath, self.inFile.split('.')[0] + ".txt"), 'w') as f:
-            f.write(json.dumps(User_prompt, indent=4).replace("\\n", "\n").replace('\\"', '\"'))
-        return prompt
+    # Store the prompt for reference
+    subFolderPath = os.path.join(self.config.link_prompt_set, self.CTI_Source)
+    os.makedirs(subFolderPath, exist_ok=True)
+    with open(os.path.join(subFolderPath, self.inFile.split('.')[0] + ".txt"), 'w') as f:
+        f.write(json.dumps(User_prompt, indent=4).replace("\\n", "\n").replace('\\"', '\"'))
+    return prompt
 ```
 
-### LLM API Caller (`LLMCaller.py`)
-Handles communication with the OpenAI API:
+
+
+
+### LLM API Communication  (`LLMCaller.py`)
+Handles the communication with OpenAI's API, ensuring responses are formatted as JSON objects and tracking the time needed for generation. It includes a rate-limiting mechanism to prevent API throttling.
+
 ```python
-from openai import OpenAI
-import time
-from omegaconf import DictConfig
-
-class LLMCaller:
-    def __init__(self, config: DictConfig, prompt) -> None:
-        self.config = config
-        self.prompt = prompt
-
-    def call(self):
-        client = OpenAI(api_key=self.config.api_key)
-        startTime = time.time()
-        response = client.chat.completions.create(
-            model = self.config.model,
-            response_format = { "type": "json_object" },
-            messages = self.prompt,
-            max_tokens= 4096,
-        )
-        endTime = time.time()
-        time.sleep(5)  # Pause to avoid exceeding rate limit
-        generation_time = endTime - startTime
-        return response, generation_time
+def call(self):
+    client = OpenAI(api_key=self.config.api_key)
+    startTime = time.time()
+    response = client.chat.completions.create(
+        model = self.config.model,
+        response_format = { "type": "json_object" },
+        messages = self.prompt,
+        max_tokens= 4096,
+    )
+    endTime = time.time()
+    #pause for 5 seconds to avoid exceeding the rate limit
+    time.sleep(5)
+    generation_time = endTime - startTime
+    return response, generation_time
 ```
 
-### Usage Calculator (`UsageCalculator.py`)
-Calculates token usage and associated costs:
-```python
-import json
-class UsageCalculator:
-    def __init__(self, response) -> None:
-        self.response = response
-        self.model = response.model
+### Usage Tracking (`UsageCalculator.py`)
+Calculates and tracks token usage and associated costs by reading pricing data from a configuration file and applying it to the actual token counts from the API response.
 
-    def calculate(self):
-        with open ("Toolbox/menu/menu.json", "r") as f:
-            data = json.load(f)
-        iprice = data[self.model]["input"]
-        oprice = data[self.model]["output"]
-        usageDict = {}
-        usageDict["model"] = self.model
-        usageDict["input"] = {
-            "tokens": self.response.usage.prompt_tokens,
-            "cost": iprice*self.response.usage.prompt_tokens
-        }
-        usageDict["output"] = {
-            "tokens": self.response.usage.completion_tokens,
-            "cost": oprice*self.response.usage.completion_tokens
-        }
-        usageDict["total"] = {
-            "tokens": self.response.usage.prompt_tokens+self.response.usage.completion_tokens,
-            "cost": iprice*self.response.usage.prompt_tokens+oprice*self.response.usage.completion_tokens
-        }
-        return usageDict
+
+```python
+def calculate(self):
+    with open ("Toolbox/menu/menu.json", "r") as f:
+        data = json.load(f)
+    iprice = data[self.model]["input"]
+    oprice = data[self.model]["output"]
+    
+    usageDict = {}
+    usageDict["model"] = self.model
+    usageDict["input"] = {
+        "tokens": self.response.usage.prompt_tokens,
+        "cost": iprice*self.response.usage.prompt_tokens
+    }
+    usageDict["output"] = {
+        "tokens": self.response.usage.completion_tokens,
+        "cost": oprice*self.response.usage.completion_tokens
+    }
+    usageDict["total"] = {
+        "tokens": self.response.usage.prompt_tokens+self.response.usage.completion_tokens,
+        "cost": iprice*self.response.usage.prompt_tokens+oprice*self.response.usage.completion_tokens
+    }
+    return usageDict
 ```
 
 ## Configuration
 The module uses [Hydra] for configuration management. Key parameters in `example.yaml`:
 ```yaml
-defaults:  
-  - _self_
+# Input/Output paths
+inSet: /home/yutong/CTINexus/dataset/Merger-output-large-GT  # Input directory for processed entity files
+outSet: /home/yutong/CTINexus/dataset/Linker-outputs-GT  # Output directory for link prediction results
 
+# Specific files to process (optional)
 addition:
   darkreading:
     - Bluetooth-Flaw.json
   securityweek:
     - wallescape.json
-  thehackernews:
-    - ESG.json
-  threatPost:
-    - H0lyGh0st.json
-  trendmicro:
-    - Akira.json
+  # ...additional sources and files...
 
-inSet: /home/yutong/CTINexus/dataset/Merger-output-large-GT
-outSet: /home/yutong/CTINexus/dataset/Linker-outputs-GT
+# OpenAI settings
+model: gpt-4-0125-preview  # LLM model to use
+api_key: sk-***  # API key (recommend using environment variables)
 
-## openai config
-model: gpt-4-0125-preview
-api_key: sk-*** # API key (recommend using environment variables)
-
-## prompt constructor
-link_prompt_folder: Toolbox/LinkerPrompt
-link_prompt_file: GT.jinja
-
-## prompt store
-link_prompt_set: /home/yutong/CTINexus/dataset/Linker-outputs-GT/prompt_store/metrics
+# Prompt settings
+link_prompt_folder: Toolbox/LinkerPrompt  # Directory with templates
+link_prompt_file: GT.jinja  # Template file to use
+link_prompt_set: /path/to/prompt_store  # Where to save prompts
 ```
 
 ## Usage Instructions
@@ -436,3 +360,4 @@ The module enhances the input files by adding predicted links:
 ```
 
 [Hydra]: https://hydra.cc/docs/intro
+[Jinja2]: https://jinja.palletsprojects.com/en/3.0.x/
