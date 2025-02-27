@@ -171,13 +171,13 @@ def preprocess(self, CTI_source, inFile):
 The module uses [Hydra] for configuration management. Key parameters in `example.yaml`:
 ```yaml
 # Input/Output paths
-inSet: /home/yutong/CTINexus/dataset/Tagger-output-gpt4-8-v2-processed  # Input directory with preprocessed triplets
-outSet: /home/yutong/CTINexus/dataset/Merger-output-large-0.6  # Output directory
+inSet: <*>                  # Input directory with preprocessed triplets
+outSet: <*>                 # Output directory
 
 # OpenAI settings
-api_key: sk-***  # API key (recommend using environment variables)
-embedding_model: text-embedding-3-large  # Embedding model to use
-similarity_threshold: 0.6  # Similarity threshold for clustering
+api_key: <*>                # API key (recommend using environment variables)
+embedding_model: <*>        # Embedding model to use
+similarity_threshold: <*>   # Similarity threshold for clustering
 ```
 
 ## Usage Instructions
@@ -208,12 +208,12 @@ The module expects files containing preprocessed triplets with mention IDs:
     "aligned_triplets": [
       {
         "subject": {"mention_id": 0, "mention_text": "APT28", "mention_class": "THREAT_ACTOR"},
-        "predicate": "uses",
+        "relation": "uses",
         "object": {"mention_id": 1, "mention_text": "Zebrocy", "mention_class": "MALWARE"}
       },
       {
         "subject": {"mention_id": 2, "mention_text": "Zebrocy", "mention_class": "MALWARE"},
-        "predicate": "targets",
+        "relation": "targets",
         "object": {"mention_id": 3, "mention_text": "government entities", "mention_class": "ORGANIZATION"}
       }
     ]
@@ -231,18 +231,18 @@ The module enhances the input files by adding merged entities:
     "aligned_triplets": [
       {
         "subject": {"mention_id": 0, "mention_text": "APT28", "mention_class": "THREAT_ACTOR", "entity_id": 0, "mentions_merged": ["APT28"], "entity_text": "APT28"},
-        "predicate": "uses",
+        "relation": "uses",
         "object": {"mention_id": 1, "mention_text": "Zebrocy", "mention_class": "MALWARE", "entity_id": 1, "mentions_merged": ["Zebrocy"], "entity_text": "Zebrocy"}
       },
       {
         "subject": {"mention_id": 2, "mention_text": "Zebrocy", "mention_class": "MALWARE", "entity_id": 1, "mentions_merged": ["Zebrocy"], "entity_text": "Zebrocy"},
-        "predicate": "targets",
+        "relation": "targets",
         "object": {"mention_id": 3, "mention_text": "government entities", "mention_class": "ORGANIZATION", "entity_id": 2, "mentions_merged": ["government entities"], "entity_text": "government entities"}
       }
     ],
-    "response_time": 2.35,
-    "embedding_model": "text-embedding-3-large",
-    "entity_num": 3
+    "response_time": ...,
+    "embedding_model": "...",
+    "entity_num": ...
   }
 }
 ```

@@ -69,7 +69,7 @@ Supports multiple strategies for selecting demonstration examples:
 * **Fixed** examples can also be specified
 
 ### Prompt Construction (`promptConstructor.py`)
-Uses Jinja2 templating to build prompts with a flexible structure:
+Uses [Jinja2] templating to build prompts with a flexible structure:
 
 ```python
 def generate_prompt(self):
@@ -110,7 +110,7 @@ def parse(self):
 Calculates and tracks token usage and costs for API-based models:
 ```python
 def calculate(self):
-    with open ("Toolbox/menu/menu.json", "r") as f:
+    with open (model_price_menu, "r") as f:
         data = json.load(f)
     iprice = data[self.model]["input"]
     oprice = data[self.model]["output"]
@@ -122,18 +122,18 @@ def calculate(self):
 ## Configuration
 The module uses [Hydra] for configuration management. Key parameters in example.yaml:
 ```yaml
-config_name: IE-GT                      # Configuration profile name
-inSet: dataset/190CTI+12Source          # Input directory for CTI sources
-outSet: dataset/IE-GT                   # Output directory for results
-model: gpt-4o-2024-08-06                # LLM model identifier
+config_name: <*>         # Configuration profile name
+inSet: <*>               # Input directory for CTI sources
+outSet: <*>              # Output directory for results
+model: <*>               # LLM model identifier
 retriever:
-  type: "kNN"                           # Demonstration retrieval method
-  permutation: asc                      # Order of retrieved examples
-shot: 3                                 # Number of demonstrations to include
-demo_set: dataset/demoSet               # Directory with demonstration examples
-ie_prompt_set: Toolbox/IE_Prompts       # Directory with prompt templates
-templ: QD4.jinja                        # Template file to use
-ie_prompt_store: Toolbox/PromptStore/IE-GT  # Storage for used prompts
+  type: <*>              # Demonstration retrieval method
+  permutation: <*>       # Order of retrieved examples
+shot: <*>                # Number of demonstrations to include
+demo_set: <*>            # Directory with demonstration examples
+ie_prompt_set: <*>       # Directory with prompt templates
+templ: <*>               # Template file to use
+ie_prompt_store: <*>     # Storage for used prompts
 ```
 
 ## Usage Instructions
@@ -158,24 +158,24 @@ For each processed CTI report, the module generates:
   "CTI": "Original CTI text...",
   "IE": {
     "triplets": [
-      {"subject": "...", "predicate": "...", "object": "..."},
+      {"subject": "...", "relation": "...", "object": "..."},
       ...
     ],
-    "triples_count": 5,
+    "triples_count": ...,
     "cost": {
-      "model": "gpt-4o-2024-08-06",
-      "input": {"tokens": 1024, "cost": 0.01},
-      "output": {"tokens": 512, "cost": 0.03},
-      "total": {"tokens": 1536, "cost": 0.04}
+      "model": "...",
+      "input": {"tokens": ..., "cost": ...},
+      "output": {"tokens": ..., "cost": ...},
+      "total": {"tokens": ..., "cost": ...}
     },
-    "time": 2.45,
+    "time": ...,
     "Prompt": {
-      "constructed_prompt": "path/to/prompt",
-      "prompt_template": "QD4.jinja",
-      "demo_retriever": "kNN",
-      "demos": ["example1.json", "example2.json", "example3.json"],
-      "demo_number": 3,
-      "permutation": "asc"
+      "constructed_prompt": "...",
+      "prompt_template": "...",
+      "demo_retriever": "...",
+      "demos": ["...", ...],
+      "demo_number": ...,
+      "permutation": "..."
     }
   }
 }
@@ -207,3 +207,4 @@ For each processed CTI report, the module generates:
 * NLTK (for text processing)
 
 [Hydra]: https://hydra.cc/docs/intro
+[jinja2]: https://jinja.palletsprojects.com/en/stable/

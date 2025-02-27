@@ -7,7 +7,7 @@ nav_order: 1
 # Entity Typing (ET)
 {: .no_toc }
 
-The ET module enhances triplets (subject-predicate-object structures) extracted by the Information Extraction (IE) module by assigning specific semantic types to entities.
+The ET module enhances triplets (subject-relation-object structures) extracted by the Information Extraction (IE) module by assigning specific semantic types to entities.
 {: .fs-5 .fw-300 }
 
 ![](../../../assets/images/et.png)
@@ -112,7 +112,7 @@ def call(self):
 Calculates token usage and associated costs:
 ```python
 def calculate(self):
-    with open ("Toolbox/menu/menu.json", "r") as f:
+    with open (model_price_menu, "r") as f:
         data = json.load(f)
     iprice = data[self.model]["input"]
     oprice = data[self.model]["output"]
@@ -138,18 +138,18 @@ def calculate(self):
 The module uses [Hydra] for configuration management. Key parameters in `example.yaml`:
 ```yaml
 # Input/Output paths
-inSet: /home/yutong/CTINexus/dataset/RE-IE-outputs-3-asc  # Input triplets directory
-outSet: /home/yutong/CTINexus/dataset/Tagger-output-gpt4-8-v2  # Output directory
+inSet: <*>                # Input triplets directory
+outSet: <*>               # Output directory
 
 # Model configuration
-model: gpt-4-0125-preview  # LLM model to use
-api_key: sk-***  # API key (recommend using environment variables)
+model: <*>                # LLM model to use
+api_key: <*>              # API key (recommend using environment variables)
 
 # Prompt settings
-tag_prompt_folder: Toolbox/TagPrompt  # Directory with templates
-tag_prompt_file: 8shot-v2.jinja  # Template file to use
-tag_prompt_store: /path/to/prompt_store  # Where to save prompts
-shot: 8  # Number of examples in prompt
+tag_prompt_folder: <*>    # Directory with templates
+tag_prompt_file: <*>      # Template file to use
+tag_prompt_store: <*>     # Where to save prompts
+shot: <*>                 # Number of examples in prompt
 ```
 
 ## Usage Instructions
@@ -174,9 +174,9 @@ The module expects files containing extracted triplets from the `IE` module:
   },
   "IE": {
     "triplets": [
-      {"subject": "APT28", "predicate": "uses", "object": "Zebrocy"},
-      {"subject": "Zebrocy", "predicate": "targets", "object": "government entities"},
-      {"subject": "APT28", "predicate": "associated with", "object": "Russia"}
+      {"subject": "APT28", "relation": "uses", "object": "Zebrocy"},
+      {"subject": "Zebrocy", "relation": "targets", "object": "government entities"},
+      {"subject": "APT28", "relation": "associated with", "object": "Russia"}
     ]
   }
 }
@@ -192,28 +192,28 @@ The module enhances the input files by adding an ET section with typed entities:
     "typed_triplets": [
       {
         "subject": {"text": "APT28", "type": "THREAT_ACTOR"},
-        "predicate": "uses",
+        "relation": "uses",
         "object": {"text": "Zebrocy", "type": "MALWARE"}
       },
       {
         "subject": {"text": "Zebrocy", "type": "MALWARE"},
-        "predicate": "targets",
+        "relation": "targets",
         "object": {"text": "government entities", "type": "ORGANIZATION"}
       },
       {
         "subject": {"text": "APT28", "type": "THREAT_ACTOR"},
-        "predicate": "associated with",
+        "relation": "associated with",
         "object": {"text": "Russia", "type": "LOCATION"}
       }
     ],
-    "response_time": 2.35,
-    "Demo_num": 8
+    "response_time": ...,
+    "Demo_num": ...
   }
 }
 ```
 
 ## Entity Type Ontology
-The module by default uses the [MALONT] ontology to assign types to entities. The ontology is stored in `Toolbox/TagClass/MALONT.json`, including:
+The module by default uses the [MALONT] ontology to assign types to entities, including:
 ```json
 [
     "Account",
